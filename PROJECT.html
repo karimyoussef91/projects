@@ -1,0 +1,405 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>pixi.js example 2 loading a sprite sheet</title>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1 maximum-scale=1 user-scalable=0" />
+<link rel="stylesheet" href="storm.css">
+<script src="jquery-1.8.3.min.js"></script>
+<script src="pixi.js"></script>
+
+
+
+
+<style>
+body {
+margin: 0;
+padding: 0;
+background-color: #000000;
+}
+</style>
+<script src="pixi.js"></script>
+</head>
+<body>
+<a href="http://www.photonstorm.com"><img src="assets/photonstorm.png" width="121" height="18" id="photonstorm" title="Photon Storm" /></a>
+	<a href="http://www.html5gamedevs.com/topic/59-pixijs-has-landed/"><img src="assets/pixi.png" width="56" height="22" id="pixi" title="pixi.js" /></a>
+	<input type="button" id="mutesound" value="MUTE" />
+	
+  
+  <label id= "score" title="0" style="position:absolute;top:270px;right:-140;color:grey;font-size:50px;visibility:visible;margin-right20%;"></label>
+  <label id= "lives" title="0" style="position:absolute;top:500px;right:-140;color:grey;font-size:50px;visibility:visible;margin-right20%;"></label>
+  <audio id="music1" src="DigitalStream.wav"preloaded="auto"></audio>
+   <img id="image" src="mutebutt.png" style="position:absolute; top:150px ; right:165px; " height="100" width="100" onclick="mute()" ;>
+  <img id="image1" src="pause.png" style="position:absolute; top:250px ; right:155px; " height="100" width="100" onclick="pause_game()" ;>
+  
+<script>
+
+var game_on = false;
+
+//width and height of screen
+var w = 1024;
+var h = 650;
+
+
+//number of enemies attaking in a wave
+var starCount = 1;
+
+//arrays to hold enemies and shooting bullets
+var stars = [];
+var explosions = [];
+
+
+
+//general purpose variable ( aka don't remembre the use :D)
+var y=0;
+// lives and score, lives initially set to 3 
+var O=3;
+var score=0;
+
+//time variables to ajust objects speeds according to rendering frame rate
+var delta =0;
+var lastCalledTime = new Date().getTime();
+var current=0;
+var delta2 =0;
+var lastCalledTime2 = new Date().getTime();
+var delta3 =0;
+var lastCalledTime3 = new Date().getTime();
+
+//time function to explosion appearance and dissapearence
+var timer = new Date().getTime();
+
+//initial speed of enemies to be changes by the next level
+var aliens_speed = 40;
+
+
+// create an array of assets to load
+var assetsToLoader = [ "SpriteSheet.json"];
+
+
+//loading sound track
+var music=document.getElementById("music1");
+	music.autoplay=true;
+	music.load();
+	music.loop=true;
+
+
+
+
+
+// create a new loader
+loader = new PIXI.AssetLoader(assetsToLoader);
+
+// use callback
+loader.onComplete = onAssetsLoaded
+
+//begin load
+loader.load();
+
+
+//interactive boolean 
+var interactive = true;
+
+//most probably unused
+var count = 0;
+
+// create an new instance of a pixi stage
+var stage = new PIXI.Stage(0xFFFFFF,interactive);
+
+//sprite objects texures extracted from images
+var mySprite = new PIXI.Sprite(PIXI.Texture.fromImage("sky.jpg")); //backgroung
+var texture = PIXI.Texture.fromImage("xtb1.gif"); //shooter
+var texture2 = PIXI.Texture.fromImage("missile-sprite.png"); //shooting bombs
+var ballTexture = new PIXI.Texture.fromImage("al.png"); //enemies
+var explosion = new PIXI.Texture.fromImage("boom.png"); //explosion effect
+//end of sprite objects textures
+
+
+//add background to stage
+stage.addChild(mySprite);
+//adjusting position of background
+mySprite.position.x = 0;
+mySprite.position.y = 0;
+
+// create a renderer instance.
+renderer = PIXI.autoDetectRenderer(w, h);
+
+// add the renderer view element to the DOM
+document.body.appendChild(renderer.view);
+
+
+//shooter
+//--------------------------------------------------------------------------
+// create a new Sprite using the texture for the shooter
+var SpaceShip = new PIXI.Sprite(texture); //shooter sprite
+var M = new Array();//array of shooting bombs
+
+// center the sprites anchor point
+SpaceShip.anchor.x = 0.5;
+SpaceShip.anchor.y = 0.5;
+
+// move the sprite t the center of the screen
+SpaceShip.position.x = 140;
+SpaceShip.position.y = 300;
+
+
+
+
+
+
+//interactive with mouse and keyboard
+SpaceShip.setInteractive(true);
+//------------------------------------------------------------------------------
+mySprite.setInteractive(true);
+
+
+//soundtrack mute
+//--------------------------------------
+function mute() {
+                if (mutesound == 1) {
+	                        
+                music.pause();	
+	            mutesound = 0;
+                } else {
+                    
+               music.play();
+	                    mutesound = 1;
+                }
+            }
+//--------------------------------------
+
+//variables maybe unused
+var x=0;
+var y=0;
+
+
+
+//mouse motion funtion: adjusting shooter position with mouse cursor on the screen:
+
+PIXI.InteractionManager.prototype.onMouseMove = function(event) {
+
+if (game_on){
+	SpaceShip.position.x = event.pageX - SpaceShip.width;
+	SpaceShip.position.y = event.pageY - SpaceShip.height/4;
+}
+
+
+
+}
+
+//mouse click event handler: create a new shooting missile, add it to the array and add it to stage
+PIXI.InteractionManager.prototype.onMouseDown = function(event){
+
+if (game_on){
+	var Missile = new PIXI.Sprite(texture2);
+	Missile.position.x = SpaceShip.position.x; //adjust position "from shooter"
+	Missile.position.y = SpaceShip.position.y - Missile.height/2;
+	Missile.anchor.x=0.5;
+	Missile.anchor.y=0.5;
+
+
+	stage.addChild(Missile);
+	M.push(Missile);
+}
+
+
+
+}
+
+
+
+
+
+
+setInterval(start,3000);//each 5 seconds an attacking wave
+
+//on loading complete
+function onAssetsLoaded()
+{
+
+	stage.addChild(SpaceShip);
+	renderer.render(stage);
+	requestAnimFrame(update);
+
+}
+
+//enemy generator
+function start() {
+
+if (game_on){
+for (var i = 0; i < starCount; i++)
+{
+var tempBall = new PIXI.Sprite(ballTexture);
+
+tempBall.position.x = Math.random()*w ;
+tempBall.position.y = 20 ;
+tempBall.anchor.x = 0.5;
+tempBall.anchor.y = 0.5;
+
+stage.addChild(tempBall);
+stars.push(tempBall);
+
+//alert(i);
+
+}
+}
+}
+
+
+
+//display callback, updates positions, adjust speeds, check for collisions
+function update(){
+
+if (game_on){
+//level up after reaching 50 score points
+if ( score > 50 ){
+	aliens_speed = 80;
+	starCount = 2;
+}
+
+//collision detection
+collision();
+spaceShipCollision();
+
+
+//calculating time between 2 frames to adjust speed
+delta = (new Date().getTime() - lastCalledTime)/1000;
+lastCalledTime = new Date().getTime();
+
+//time to clear explosions effects created by each collision
+var current = new Date().getTime() - timer;
+//alert(current);
+ if ( current>=500){
+ clearExplosions();
+  timer = new Date().getTime();
+ }
+
+
+//calculate per call displacement based on time between 2 frames, displacement = speed*time
+var disp = aliens_speed*delta;
+//updating enemies positions
+if ( stars.length > 0){
+	for (var i = 0; i < stars.length; i++){
+	
+			stars[i].position.y += disp;
+			
+		}
+}
+
+var speed = 150;
+
+//same for shooting misslies
+var disp2 = speed*delta;
+if (M.length >0){
+	for ( var i = 0 ; i < M.length; i++){
+		M[i].position.y -= disp2;
+
+}
+}
+
+
+}
+requestAnimFrame(update);
+renderer.render(stage);
+
+}
+
+
+//check for hitting an enemy by a shooting missile
+function collision(){
+if (M.length > 0){
+for(var i=0; i<stars.length;i++){
+				for ( var j=0 ; j<M.length ; j++){
+					if((stars[i].position.x - stars[i].width/2<=M[j].position.x)&&(M[j].position.x<=stars[i].position.x+stars[i].width/2) && (stars[i].position.y<=M[j].position.y)&&(M[j].position.y<=stars[i].height/2+stars[i].position.y)){
+						
+						var boom = new PIXI.Sprite(explosion);
+						boom.anchor.x = 0.5;
+						boom.anchor.y = 0.5;
+						boom.position.x = stars[i].position.x;
+						boom.position.y = stars[i].position.y;
+						explosions.push(boom);
+						stage.addChild(boom);
+						stage.removeChild(stars[i]);
+						stage.removeChild(M[j]);
+						M.splice(j,1);
+						stars.splice(i,1);
+						score+=10;
+						document.getElementById('score').innerHTML=score;
+					}
+				}
+				
+			
+				
+				
+				
+				
+				
+			}
+}
+}
+
+//checking for hitting the shooter by an enemy
+function spaceShipCollision(){
+
+	for (var i=0;i<stars.length;i++){
+			if((stars[i].position.x + stars[i].width/4>=SpaceShip.position.x - SpaceShip.width/4)&&(stars[i].position.x - stars[i].width/4<=SpaceShip.position.x+SpaceShip.width/4) && (stars[i].position.y + stars[i].height/4>=SpaceShip.position.y - SpaceShip.height/4)&&(stars[i].position.y - stars[i].height/4<=SpaceShip.position.y+SpaceShip.height/4)){
+						
+						//alert("BOMMM!!!");
+						//alert(O);
+						O--;
+						document.getElementById('lives').innerHTML=O;
+						var boom = new PIXI.Sprite(explosion);
+						boom.anchor.x = 0.5;
+						boom.anchor.y = 0.5;
+						boom.position.x = stars[i].position.x;
+						boom.position.y = stars[i].position.y;
+						stage.addChild(boom);
+						explosions.push(boom);
+						stage.removeChild(stars[i]);
+						//stage.removeChild(SpaceShip);
+						stars.splice(i,1);
+						
+						if(O==0){
+					alert("GAMEOVER!!!");
+					
+					reset();
+					
+					}
+					}
+					
+	}
+}
+
+//reset function to reset the game after game is over, clear stage except backgourd,reset score and rerender 
+function reset(){
+	for ( var i = 0 ; i<M.length ; i++){
+		stage.removeChild(M[i]);
+	}
+	
+	for ( var i=0; i<stars.length ; i++){
+		stage.removeChild(stars[i]);
+	}
+	stage.removeChild(SpaceShip);
+	score = 0;
+	document.getElementById('score').innerHTML=score;
+	O=3;
+	document.getElementById('lives').innerHTML=O;
+	loader.load();
+}
+
+function clearExplosions(){
+
+	//alert("hena");
+	for ( var i = 0; i<explosions.length; i++ ){
+		stage.removeChild(explosions[i]);
+		explosions.splice(i,1);
+	}
+}
+function pause_game(){
+	game_on = !game_on;
+}
+
+
+</script>
+
+</body>
+</html>
